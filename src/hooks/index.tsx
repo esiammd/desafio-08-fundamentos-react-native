@@ -1,14 +1,13 @@
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
 
 import { CartProvider } from './cart';
 
-const AppProvider: React.FC = ({ children }) => {
-  return (
-    <CartProvider>
-      <NavigationContainer>{children}</NavigationContainer>
-    </CartProvider>
-  );
-};
+interface AppProviderProps {
+  children: React.ReactNode;
+}
+
+const AppProvider: React.FC<AppProviderProps> = ({ children }) => (
+  <CartProvider>{children}</CartProvider>
+);
 
 export default AppProvider;

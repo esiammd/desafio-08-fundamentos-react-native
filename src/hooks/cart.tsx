@@ -1,11 +1,11 @@
+/* eslint-disable @typescript-eslint/consistent-type-assertions */
 import React, {
   createContext,
-  useState,
   useCallback,
+  useState,
   useContext,
-  useEffect,
+  useEffect
 } from 'react';
-
 import AsyncStorage from '@react-native-community/async-storage';
 
 interface Product {
@@ -16,54 +16,109 @@ interface Product {
   quantity: number;
 }
 
-interface CartContext {
+interface CartContextData {
   products: Product[];
-  addToCart(item: Omit<Product, 'quantity'>): void;
-  increment(id: string): void;
-  decrement(id: string): void;
+  loading: boolean;
+  addToCart: (item: Omit<Product, 'quantity'>) => void;
+  increment: (id: string) => void;
+  decrement: (id: string) => void;
 }
 
-const CartContext = createContext<CartContext | null>(null);
+interface CartProviderProps {
+  children: React.ReactNode;
+}
 
-const CartProvider: React.FC = ({ children }) => {
+const CartContext = createContext<CartContextData | null>(null);
+
+export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function loadProducts(): Promise<void> {
-      // TODO LOAD ITEMS FROM ASYNC STORAGE
+    async function loadProductsData(): Promise<void> {
+      const storageProducts = await AsyncStorage.getItem(
+        '@GoMarketplace:products'
+      );
+
+      if (storageProducts) {
+        setProducts(JSON.parse(storageProducts))
+      }
+
+      setLoading(false);
     }
 
-    loadProducts();
+    loadProductsData();
   }, []);
 
-  const addToCart = useCallback(async product => {
-    // TODO ADD A NEW ITEM TO THE CART
-  }, []);
+  const addToCart = useCallback(async (product: Omit<Product, 'quantity'>) => {
+    const productExists = products.find(item => item.id === product.id);
+    let updateProducts = products;
 
-  const increment = useCallback(async id => {
-    // TODO INCREMENTS A PRODUCT QUANTITY IN THE CART
-  }, []);
+    if (productExists) {
+      updateProducts = products.map(item =>
+        item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item,
+      );
+    } else {
+      updateProducts = [ ...products, { ...product, quantity: 1 }];
+    }
 
-  const decrement = useCallback(async id => {
-    // TODO DECREMENTS A PRODUCT QUANTITY IN THE CART
-  }, []);
+    setProducts(updateProducts);
+    await AsyncStorage.setItem(
+      '@GoMarketplace:products',
+      JSON.stringify(updateProducts)
+    );
+  }, [products]);
+
+  const increment = useCallback(async (id: string) => {
+    const updateProducts = products.map(item =>
+      item.id === id ? { ...item, quantity: item.quantity + 1 } : item,
+    );
+
+    setProducts(updateProducts);
+    await AsyncStorage.setItem(
+      '@GoMarketplace:products',
+      JSON.stringify(updateProducts)
+    );
+  }, [products]);
+
+  const decrement = useCallback(async (id: string) => {
+    const productExists = products.find(item => item.id === id);
+    let updateProducts = products;
+
+    if (productExists && (productExists.quantity - 1 === 0)) {
+      const indexOfId = products.indexOf(productExists);
+      updateProducts = products.splice(indexOfId, 1);
+    }
+
+    updateProducts = products.map(item =>
+      item.id === id ? { ...item, quantity: item.quantity - 1 } : item,
+    );
+
+    setProducts(updateProducts);
+    await AsyncStorage.setItem(
+      '@GoMarketplace:products',
+      JSON.stringify(updateProducts)
+    );
+  }, [products]);
 
   const value = React.useMemo(
-    () => ({ addToCart, increment, decrement, products }),
-    [products, addToCart, increment, decrement],
+    () => ({ addToCart, increment, decrement, products, loading }),
+    [products, loading, addToCart, increment, decrement],
   );
 
-  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
+  return (
+    <CartContext.Provider value={value}>
+      {children}
+    </CartContext.Provider>
+  );
 };
 
-function useCart(): CartContext {
+export function useCart(): CartContextData {
   const context = useContext(CartContext);
 
   if (!context) {
-    throw new Error(`useCart must be used within a CartProvider`);
+    throw new Error('useCart must be used within an CartProvider');
   }
 
   return context;
 }
-
-export { CartProvider, useCart };

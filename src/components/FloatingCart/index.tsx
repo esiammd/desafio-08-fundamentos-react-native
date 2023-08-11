@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 
 import { useNavigation } from '@react-navigation/native';
 
@@ -18,28 +18,41 @@ import { useCart } from '../../hooks/cart';
 // Calculo do total
 // Navegação no clique do TouchableHighlight
 
-const FloatingCart: React.FC = () => {
+interface FloatingCartProps {
+  isButton?: boolean;
+}
+
+const FloatingCart: React.FC<FloatingCartProps> = ({ isButton = true }) => {
   const { products } = useCart();
 
   const navigation = useNavigation();
 
   const cartTotal = useMemo(() => {
-    // TODO RETURN THE SUM OF THE PRICE FROM ALL ITEMS IN THE CART
+    const initialValue = 0;
+    const totalValue = products.reduce((accumulator, item) => {
+      const productSubtotal = item.price * item.quantity;
 
-    return formatValue(0);
+      return accumulator + productSubtotal;
+    }, initialValue);
+
+    return formatValue(totalValue);
   }, [products]);
 
   const totalItensInCart = useMemo(() => {
-    // TODO RETURN THE SUM OF THE QUANTITY OF THE PRODUCTS IN THE CART
+    const initialValue = 0;
+    const totalItens = products.reduce((accumulator, item) => {
+      return accumulator + item.quantity;
+    }, initialValue);
 
-    return 0;
+    return totalItens;
   }, [products]);
 
   return (
     <Container>
       <CartButton
         testID="navigate-to-cart-button"
-        onPress={() => navigation.navigate('Cart')}
+        onPress={() => navigation.navigate('Cart' as never)}
+        disabled={!isButton}
       >
         <FeatherIcon name="shopping-cart" size={24} color="#fff" />
         <CartButtonText>{`${totalItensInCart} itens`}</CartButtonText>
